@@ -5,9 +5,9 @@ from transformers import AutoConfig
 
 @dataclass(slots=True)
 class Config:
-    model: str
-    max_num_batched_tokens: int = 16384
-    max_num_seqs: int = 512
+    model: str                               # 本地模型目录，里面包含模型配置和权重等文件
+    max_num_batched_tokens: int = 16384      # 一次批量处理的 token 预算
+    max_num_seqs: int = 512                  
     max_model_len: int = 4096
     gpu_memory_utilization: float = 0.9
     tensor_parallel_size: int = 1
