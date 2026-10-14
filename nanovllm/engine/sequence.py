@@ -15,7 +15,7 @@ class Sequence:
     block_size = 256
     counter = count()   # 创建计数器，依次产生 0、1、2、3……
 
-    def __init__(self, token_ids: list[int], sampling_params = SamplingParams()):
+    def __init__(self, token_ids: list[int], sampling_params = SamplingParams()):   # 注意：每个 Token 对应哪个 token_id 是由模型配套的 Tokenizer 决定的，退一步说，一句话该怎样分词都是模型配套的 Tokenizer 决定的
         self.seq_id = next(Sequence.counter)    # next() 是 Python 内置函数，用来从迭代器中取出下一个值，每调用一次就向前走一步
         self.status = SequenceStatus.WAITING
         self.token_ids = copy(token_ids)        # 完整 token 列表：输入 + 已生成的输出
