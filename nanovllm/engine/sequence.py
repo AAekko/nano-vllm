@@ -68,16 +68,18 @@ class Sequence:
         self.token_ids.append(token_id)
         self.last_token = token_id
         self.num_tokens += 1
-
-    def __getstate__(self):
+    # 下面这两个函数是一对 “打包状态”和“还原状态” 的方法，用于把 Sequence 的必要信息传给其他进程。Python 的 pickle 在序列化、反序列化对象时，会自动调用它们，在 model_runner.py 中。
+    # 序列化：把对象转换成字节数据，使用 pickle.dumps()
+    # 反序列化：把字节数据恢复成对象，使用 pickle.loads()
+    def __getstate__(self):          # __getstate__()：决定要打包哪些信息
         last_state = self.last_token if not self.is_prefill else self.token_ids
-        return (self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens, self.num_scheduled_tokens, self.block_table, last_state)
+        return (self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens, self.num_scheduled_tokens, self.block_table, last_state) # return (...) 把长度、计算进度、缓存块表和 last_state 打包成一个元组
 
-    def __setstate__(self, state):
-        self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens, self.num_scheduled_tokens, self.block_table, last_state = state
-        if isinstance(last_state, list):
+    def __setstate__(self, state):   # __setstate__(self, state)：把收到的信息放回对象中
+        self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens, self.num_scheduled_tokens, self.block_table, last_state = state  # 这叫解包赋值，state 是已经传进来的数据，左边这些字段按顺序把元组中的值赋给对应字段
+        if isinstance(last_state, list):  # 如果 last_state 的类型是列表，则恢复完整 token_ids，再取列表最后一个元素作为 last_token
             self.token_ids = last_state
             self.last_token = self.token_ids[-1]
-        else:
+        else:                             # 如果 last_state 的类型是单个token，则只恢复 last_token，把 token_ids 设为空列表
             self.token_ids = []
             self.last_token = last_state
