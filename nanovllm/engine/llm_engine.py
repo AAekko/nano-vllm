@@ -12,7 +12,7 @@ from nanovllm.engine.scheduler import Scheduler
 from nanovllm.engine.model_runner import ModelRunner
 
 
-class LLMEngine:
+class LLMEngine:                        # LLMEngine 这个类负责组织整个推理流程
 
     def __init__(self, model, **kwargs):
         config_fields = {field.name for field in fields(Config)}
