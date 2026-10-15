@@ -8,6 +8,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(path)                   # AutoTokenizer.from_pretrained(path) 加载分词器
     llm = LLM(path, enforce_eager=True, tensor_parallel_size=1)       # LLM(path, ...) 初始化推理引擎、加载模型。LLM 明明是一个类，为什么能这样当函数用？Python 中，类名(...) 就是在创建这个类的对象，叫“实例化”，别跟C++的写法搞混了
                                                                       # 右边 LLM(...)：创建对象。  左边 llm：给这个对象起的变量名
+    # LLM 没有自己的 __init__，所以使用父类的这个方法。此处参数是这样接收的：path：第一个位置的参数，传给 model，两边名字不用相同。后两个带名字的参数：被 **kwargs 收集成一个字典：kwargs = { "enforce_eager": True,"tensor_parallel_size": 1} 然后程序把这些配置交给 Config 
     sampling_params = SamplingParams(temperature=0.6, max_tokens=256)
     prompts = [
         "introduce yourself",
