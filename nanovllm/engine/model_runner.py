@@ -11,7 +11,8 @@ from nanovllm.layers.sampler import Sampler
 from nanovllm.utils.context import set_context, get_context, reset_context
 from nanovllm.utils.loader import load_model
 
-
+# 模型执行器 ModelRunner 负责让模型真正进行计算，主要做三件事：把模型权重加载到 GPU，准备模型需要的输入数据，运行模型生成下一个 token
+# 例如回答“你好”：先生成“你”，再生成“好”。引擎不断调用执行器，就能逐步生成完整回答
 class ModelRunner:
 
     def __init__(self, config: Config, rank: int, event: Event | list[Event]):
