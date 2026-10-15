@@ -4,7 +4,7 @@ from transformers import AutoTokenizer
 
 
 def main():
-    path = os.path.expanduser("~/huggingface/Qwen3-0.6B/")            # expanduser() 把 ~ 替换为当前用户的主目录。这个目录需要提前存放模型权重、配置和分词器文件
+    path = os.path.expanduser("~/huggingface/Qwen3-0.6B/")            # expanduser() 把 ~ 替换为当前用户的主目录。这个目录需要提前存放模型权重、配置和分词器文件，是从hugging face下载的
     tokenizer = AutoTokenizer.from_pretrained(path)                   # AutoTokenizer.from_pretrained(path) 加载分词器
     llm = LLM(path, enforce_eager=True, tensor_parallel_size=1)       # LLM(path, ...) 初始化推理引擎、加载模型
 
