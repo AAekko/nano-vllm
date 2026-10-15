@@ -6,8 +6,8 @@ from transformers import AutoTokenizer
 def main():
     path = os.path.expanduser("~/huggingface/Qwen3-0.6B/")            # expanduser() 把 ~ 替换为当前用户的主目录。这个目录需要提前存放模型权重、配置和分词器文件，是从hugging face下载的
     tokenizer = AutoTokenizer.from_pretrained(path)                   # AutoTokenizer.from_pretrained(path) 加载分词器
-    llm = LLM(path, enforce_eager=True, tensor_parallel_size=1)       # LLM(path, ...) 初始化推理引擎、加载模型
-
+    llm = LLM(path, enforce_eager=True, tensor_parallel_size=1)       # LLM(path, ...) 初始化推理引擎、加载模型。LLM 明明是一个类，为什么能这样当函数用？Python 中，类名(...) 就是在创建这个类的对象，叫“实例化”，别跟C++的写法搞混了
+                                                                      # 右边 LLM(...)：创建对象。  左边 llm：给这个对象起的变量名
     sampling_params = SamplingParams(temperature=0.6, max_tokens=256)
     prompts = [
         "introduce yourself",
