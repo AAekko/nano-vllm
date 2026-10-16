@@ -47,12 +47,12 @@ class LLMEngine:                        # LLMEngine 这个类负责组织整个�
         self.scheduler.add(seq)                                 # 加入scheduler.waiting。这里调用了scheduler类的add函数，而这个函数的函数就是将请求加入waiting队列
 
     def step(self):
-        seqs, is_prefill = self.scheduler.schedule()
-        num_tokens = sum(seq.num_scheduled_tokens for seq in seqs) if is_prefill else -len(seqs)
-        token_ids = self.model_runner.call("run", seqs, is_prefill)
-        self.scheduler.postprocess(seqs, token_ids, is_prefill)
-        outputs = [(seq.seq_id, seq.completion_token_ids) for seq in seqs if seq.is_finished]
-        return outputs, num_tokens
+        seqs, is_prefill = self.scheduler.schedule()                                               # 从调度器中挑选本轮要处理的请求
+        num_tokens = sum(seq.num_scheduled_tokens for seq in seqs) if is_prefill else -len(seqs)   # 记录本轮处理量，使用正负号区分阶段。正数时，num_tokens等于本轮实际调度计算的输入 token 总数；负数时，num_tokens绝对值等于本轮处理的序列数，因为每条序列处理一个输入 token
+        token_ids = self.model_runner.call("run", seqs, is_prefill)                                # 执行模型，采样下一个 token
+        self.scheduler.postprocess(seqs, token_ids, is_prefill)                                    # 把结果写回请求，更新状态并检查是否完成
+        outputs = [(seq.seq_id, seq.completion_token_ids) for seq in seqs if seq.is_finished]      # 收集本轮已完成请求的全部输出 token
+        return outputs, num_tokens                                       
 
     def is_finished(self):
         return self.scheduler.is_finished()                      # 对应 Scheduler 类中的 is_finished() 函数，函数体内容是：return not self.waiting and not self.running。即没有等待处理的请求，并且没有正在运行的请求
@@ -72,19 +72,19 @@ class LLMEngine:                        # LLMEngine 这个类负责组织整个�
         prefill_throughput = decode_throughput = 0.              # 这两个变量的含义分别是最近一轮 prefill 和 decode 的处理速度，单位都是 token/秒，在这里我们都初始化为0
         while not self.is_finished():                            # 对应 第57行 的is_finished()函数，这里是意思是：只要还有请求未完成，就......
             t = perf_counter()                                   # perf_counter() 是用于测量耗时的高精度计时函数  #保存开始时间后，稍后计算：perf_counter() - t，就能得到从这里开始经过的秒数，用于计算本轮速度
-            output, num_tokens = self.step()                     # 
-            if num_tokens > 0:
-                prefill_throughput = num_tokens / (perf_counter() - t)
-            else:
-                decode_throughput = -num_tokens / (perf_counter() - t)
-            pbar.set_postfix(
-                "Prefill": f"int(prefill_throughput)}tok/s",
-                "Decode": f"int(decode_throughput)}tok/s",
+            output, num_tokens = self.step()                     # 这个step()函数是在 第49行 定义的函数，这里表示让推理过程向前推进一轮
+            if num_tokens > 0:                                   # prefill阶段
+                prefill_throughput = num_tokens / (perf_counter() - t)         # prefill 速度 = 本轮计算的 token 数 ÷ 本轮耗时
+            else:                                                # decode阶段
+                decode_throughput = -num_tokens / (perf_counter() - t)         # 先用 -num_tokens 把计数恢复为正数，再除以耗时
+            pbar.set_postfix(                                    # 调用 set_postfix()，开始传入一个字典，设置进度条末尾的附加信息
+                "Prefill": f"int(prefill_throughput)}tok/s",     # 设置 Prefill 的显示内容  # 其中，int() 去掉小数部分，f-string 将数值放进字符串。例如 6400.8 会显示成：6400tok/s
+                "Decode": f"int(decode_throughput)}tok/s",       # 设置 Decode 的显示内容  
             })
-            for seq_id, token_ids in output:
+            for seq_id, token_ids in output:                     # 逐个取出已完成请求，并把每个二元组解包为：seq_id    请求的序列 ID ，token_ids   这个请求生成的全部输出 token      # 这里的 token_ids 来自 seq.completion_token_ids，只包含输出部分，不包含 prompt
                 outputs[seq_id] = token_ids
                 pbar.update(1)
-        pbar.close()
-        outputs = [outputs[seq_id] for seq_id in sorted(outputs.keys())]
-        outputs = [{"text": self.tokenizer.decode(token_ids), "token_ids": token_ids} for token_ids in outputs]
-        return outputs
+        pbar.close()                                             # 所有请求处理完毕后关闭进度条。注意缩进：这一行已经位于 while 循环之外，因此，它在全部请求结束后执行一次，用于完成进度条显示并释放相关显示资源
+        outputs = [outputs[seq_id] for seq_id in sorted(outputs.keys())]       # 按序列 ID 排序，将结果恢复为输入顺序
+        outputs = [{"text": self.tokenizer.decode(token_ids), "token_ids": token_ids} for token_ids in outputs]  # 将 token ID 解码成文本，构造最终结果
+        return outputs                                           # 返回全部生成结果，这是一个字典
