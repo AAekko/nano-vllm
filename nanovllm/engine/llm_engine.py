@@ -29,7 +29,7 @@ class LLMEngine:                        # LLMEngine 这个类负责组织整个�
             self.ps.append(process)
             self.events.append(event)
         self.model_runner = ModelRunner(config, 0, self.events)
-        self.tokenizer = AutoTokenizer.from_pretrained(config.model, use_fast=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(config.model, use_fast=True)    # AutoTokenizer.from_pretrained() 是根据模型目录中的分词器配置、词表等文件，创建具体的 tokenizer 对象；use_fast=True 表示优先使用快速实现
         config.eos = self.tokenizer.eos_token_id
         self.scheduler = Scheduler(config)
         atexit.register(self.exit)
@@ -42,9 +42,9 @@ class LLMEngine:                        # LLMEngine 这个类负责组织整个�
 
     def add_request(self, prompt: str | list[int], sampling_params: SamplingParams):
         if isinstance(prompt, str):
-            prompt = self.tokenizer.encode(prompt)
-        seq = Sequence(prompt, sampling_params)
-        self.scheduler.add(seq)
+            prompt = self.tokenizer.encode(prompt)              # tokenizer.encode() 来自 Hugging Face 的 transformers 库，作用是把文本转换成模型可以接收的 token ID 列表。本项目在 第32行 创建分词器，注意这是个具体的 tokenizer 对象
+        seq = Sequence(prompt, sampling_params)                 # 创建 Sequence 类，实例化为seq，保存 token 和采样参数                              # 再次注意，python中将类实例化就是长这样，区别于C++
+        self.scheduler.add(seq)                                 # 加入scheduler.waiting
 
     def step(self):
         seqs, is_prefill = self.scheduler.schedule()
