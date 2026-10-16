@@ -27,7 +27,7 @@ class Scheduler:
         num_batched_tokens = 0                          # 统计本轮 Prefill 已经安排了多少个 token
 
         # prefill
-        while self.waiting and len(scheduled_seqs) < self.max_num_seqs:
+        while self.waiting and len(scheduled_seqs) < self.max_num_seqs:  # 只要还有等待请求，而且本轮请求数没有达到上限，就继续尝试
             seq = self.waiting[0]
             remaining = self.max_num_batched_tokens - num_batched_tokens
             if remaining == 0:
