@@ -22,9 +22,9 @@ class Scheduler:
     def add(self, seq: Sequence):
         self.waiting.append(seq)
 
-    def schedule(self) -> tuple[list[Sequence], bool]:
-        scheduled_seqs = []
-        num_batched_tokens = 0
+    def schedule(self) -> tuple[list[Sequence], bool]:  # 返回值用元组很合适，因为它表达的是位置和含义固定的一组信息。其中请求列表可以有很多个请求，但外层元组始终只有这两个元素   # 最后返回两个信息：1.哪些请求要参与本轮计算：scheduled_seqs。 2.本轮执行 Prefill 还是 Decode：is_prefill。
+        scheduled_seqs = []                             # 保存本轮选中的请求
+        num_batched_tokens = 0                          # 统计本轮 Prefill 已经安排了多少个 token
 
         # prefill
         while self.waiting and len(scheduled_seqs) < self.max_num_seqs:
@@ -52,7 +52,7 @@ class Scheduler:
             scheduled_seqs.append(seq)
 
         if scheduled_seqs:
-            return scheduled_seqs, True
+            return scheduled_seqs, True                  # Python 中，逗号分隔的多个返回值会打包成一个 tuple（元组）  # 这里等价于 return (scheduled_seqs, True) ，调用方再通过“解包”分别接收：例如 seqs, is_prefill = self.scheduler.schedule()
 
         # decode
         while self.running and len(scheduled_seqs) < self.max_num_seqs:
