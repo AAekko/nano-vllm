@@ -58,12 +58,12 @@ class LLMEngine:                        # LLMEngine 这个类负责组织整个�
         return self.scheduler.is_finished()
 
     def generate(
-        self,
-        prompts: list[str] | list[list[int]],
-        sampling_params: SamplingParams | list[SamplingParams],
-        use_tqdm: bool = True,
-    ) -> list[str]:
-        pbar = tqdm(total=len(prompts), desc="Generating", dynamic_ncols=True, disable=not use_tqdm)
+        self,                                                    # 在example.py中llm.generate()用到了generate函数，所以self表示当前的LLM实例，通过它访问 tokenizer、scheduler 等成员
+        prompts: list[str] | list[list[int]],                    # | 在类型注解中表示“或者”，这里表示 prompts 可以是：字符串列表 或 token ID 列表的列表。比如，两种 prompts 输入形式分别是：prompts = ["你好", "介绍一下自己"]，prompts = [[101, 102], [201, 202, 203]]
+        sampling_params: SamplingParams | list[SamplingParams],  # 这里表示可以是：一个采样参数对象：所有 prompt 共用  或  采样参数对象列表：每个 prompt 分别使用对应的参数
+        use_tqdm: bool = True,                                   # use_tqdm 是作者起的参数名，意思是“是否使用 tqdm”。tqdm 是 Python 中用来显示进度条的库，这个项目用它显示已完成的请求数量和生成速度，具体实现在函数体里面
+    ) -> list[str]:             # 这里表示函数返回一个列表，列表中的每个元素都是字符串，例如：["你好！", "100 以内的质数有 2、3、5、7……"]。  Tip：-> list[str] 只是类型标注，不会强制转换实际返回值。 注！！这里的返回值注释与实际实现不一致，最后返回的是字典列表，每个字典包含 text 和 token_ids
+        pbar = tqdm(total=len(prompts), desc="Generating", dynamic_ncols=True, disable=not use_tqdm)  # tqdm 是 Python 中用来显示进度条的库，pbar 保存这个进度条对象，后面会更新它。其中()中的四个依次表示：总任务数等于输入请求数，进度条前面显示 Generating，随终端宽度调整进度条宽度，use_tqdm=False 时禁用显示
         if not isinstance(sampling_params, list):
             sampling_params = [sampling_params] * len(prompts)
         for prompt, sp in zip(prompts, sampling_params):
