@@ -44,7 +44,7 @@ class LLMEngine:                        # LLMEngine 这个类负责组织整个�
         if isinstance(prompt, str):
             prompt = self.tokenizer.encode(prompt)              # tokenizer.encode() 来自 Hugging Face 的 transformers 库，作用是把文本转换成模型可以接收的 token ID 列表。本项目在 第32行 创建分词器，注意这是个具体的 tokenizer 对象
         seq = Sequence(prompt, sampling_params)                 # 创建 Sequence 类，实例化为seq，保存 token 和采样参数                              # 再次注意，python中将类实例化就是长这样，区别于C++
-        self.scheduler.add(seq)                                 # 加入scheduler.waiting
+        self.scheduler.add(seq)                                 # 加入scheduler.waiting。这里调用了scheduler类的add函数，而这个函数的函数就是将请求加入waiting队列
 
     def step(self):
         seqs, is_prefill = self.scheduler.schedule()
@@ -68,8 +68,8 @@ class LLMEngine:                        # LLMEngine 这个类负责组织整个�
             sampling_params = [sampling_params] * len(prompts)   # 如过传入的sampling_params不是list[SamplingParams]，而是SamplingParams这种单个参数对象，那么就构造一个与prompts等长的列表。例如：[sampling_params] * 3会变成[sampling_params, sampling_params, sampling_params]
         for prompt, sp in zip(prompts, sampling_params):         # zip() 将两个列表按位置配对：prompts[0]  ↔ sampling_params[0] ， prompts[1]  ↔ sampling_params[1]     # 每次循环，prompt 是一条输入，sp 是它对应的采样参数    # 额外插一嘴zip的用法，当然这里不存在这个问题，因为第68行他们长度一定是一样的。两个列表长度不同时，zip() 只遍历较短的一方，这里没有额外校验长度
             self.add_request(prompt, sp)                         # 逐条创建请求并加入调度器
-        outputs = {}
-        prefill_throughput = decode_throughput = 0.
+        outputs = {}                                             # 创建保存完成结果的字典，这里只是先准备一个容器，用来跨多轮循环累计已完成请求的结果    # 我怎么好像发现有花括号 {} ，然后花括号里面有 键: 值 形式，就是字典呢
+        prefill_throughput = decode_throughput = 0.              # 这两个变量的含义分别是最近一轮 prefill 和 decode 的处理速度，单位都是 token/秒，在这里我们都初始化为0
         while not self.is_finished():
             t = perf_counter()
             output, num_tokens = self.step()
@@ -77,9 +77,9 @@ class LLMEngine:                        # LLMEngine 这个类负责组织整个�
                 prefill_throughput = num_tokens / (perf_counter() - t)
             else:
                 decode_throughput = -num_tokens / (perf_counter() - t)
-            pbar.set_postfix({
-                "Prefill": f"{int(prefill_throughput)}tok/s",
-                "Decode": f"{int(decode_throughput)}tok/s",
+            pbar.set_postfix(
+                "Prefill": f"int(prefill_throughput)}tok/s",
+                "Decode": f"int(decode_throughput)}tok/s",
             })
             for seq_id, token_ids in output:
                 outputs[seq_id] = token_ids
