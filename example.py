@@ -14,7 +14,7 @@ def main():
         "introduce yourself",
         "list all prime numbers within 100",
     ]
-    prompts = [
+    prompts = [                                        # 这里的语法是：新列表 = [处理表达式 for 元素 in 原列表]
         tokenizer.apply_chat_template(
             [{"role": "user", "content": prompt}],
             tokenize=False,
