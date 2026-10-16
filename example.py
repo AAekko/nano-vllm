@@ -18,9 +18,9 @@ def main():
         tokenizer.apply_chat_template(                 # apply_chat_template是调用分词器对象的方法，使用加载的模板整理聊天消息。同一个 apply_chat_template() 方法，加载不同模型的分词器后，可能输出不同的聊天格式
             [{"role": "user", "content": prompt}],     # 这一行提供聊天消息，先看里面的字典 {}：第一组是指这条消息的说话者是用户，第二组是指这条消息的内容是变量 prompt 当前保存的字符串。注意："content" 是带引号的固定键名，prompt 不带引号，所以会读取变量的值
                                                        # 比如第一次循环时，prompt 是 "introduce yourself"，所以相当于：{"role": "user","content": "introduce yourself"}
-            tokenize=False,                            # False 表示关闭这里的 token 编码。因此函数返回的是已经套好聊天格式的字符串，还没有转成整数 token ID；后面的 llm.generate() 会进行编码
+            tokenize=False,                            # False 表示关闭这里的 token 编码。因为我们把编码的工作交给了引擎，后面的 llm.generate() 会进行编码，所以这里关闭token 编码。
             add_generation_prompt=True,                # add_generation_prompt=True：加上“轮到助手回答”的标记
-        )
+        )                                              # 这里的apply_chat_template()处理完之后，prompts是已经套好聊天格式的字符串。套用过程就像：“introduce yourself” → “用户：introduce yourself\n助手：” 。总的来说，主要是为了让输入符合模型训练时使用的对话格式，让模型知道“谁在说话、现在轮到谁回答”
         for prompt in prompts
     ]
     outputs = llm.generate(prompts, sampling_params)
