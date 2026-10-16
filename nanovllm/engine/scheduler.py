@@ -29,10 +29,10 @@ class Scheduler:
         # prefill
         while self.waiting and len(scheduled_seqs) < self.max_num_seqs:  # 只要还有等待请求，而且本轮请求数没有达到上限，就继续尝试
             seq = self.waiting[0]                                        # self.waiting[0] 只是查看队首，没有立即取出，因为这个请求可能无法调度，也可能需要分多轮完成 Prefi
-            remaining = self.max_num_batched_tokens - num_batched_tokens # max_num_batched_tokens
+            remaining = self.max_num_batched_tokens - num_batched_tokens # max_num_batched_tokens指的是一次批量处理的 token 预算
             if remaining == 0:
                 break
-            if not seq.block_table:
+            if not seq.block_table:                                      # 
                 num_cached_blocks = self.block_manager.can_allocate(seq)
                 if num_cached_blocks == -1:
                     break
