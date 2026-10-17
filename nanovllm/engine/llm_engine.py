@@ -23,20 +23,20 @@ class LLMEngine:                          # LLMEngine 这个类负责组织整�
         self.ps = []                                                            # 保存子进程对象，退出时需要等待它们结束
         self.events = []                                                        # 保存通知子进程执行任务的事件
         # 2) 张量并行：用 spawn 启动 rank>0 的 worker 子进程
-        ctx = mp.get_context("spawn")                                           # "spawn"：通过新的 Python 解释器启动子进程，适合这里的 CUDA 多进程场景
+        ctx = mp.get_context("spawn")                                           # 获取一套使用 spawn 方式创建子进程的工具，保存在 ctx 中   # "spawn"：通过新的 Python 解释器启动子进程，适合这里的 CUDA 多进程场景   # 这里 mp 是什么看 第6行
         for i in range(1, config.tensor_parallel_size):
-            event = ctx.Event()
-            process = ctx.Process(target=ModelRunner, args=(config, i, event))
-            process.start()
+            event = ctx.Event()                                                 # 创建进程间通知用的事件
+            process = ctx.Process(target=ModelRunner, args=(config, i, event))  # 创建进程对象，指定任务和参数  # target=ModelRunner：子进程启动后调用这个类，构造一个模型执行器  # args=(config, i, event)：传入配置、进程编号 rank 和通知事件
+            process.start()                                                     # 真正启动子进程，启动后，子进程会执行：ModelRunner(config, i, event)  # 张量并行意味着多个进程共同计算同一个模型。 在这份实现中，每个 rank 使用对应编号的 GPU
             self.ps.append(process)
             self.events.append(event)
-        self.model_runner = ModelRunner(config, 0, self.events)                        # rank 0 的 ModelRunner 跑在主进程
+        self.model_runner = ModelRunner(config, 0, self.events)                        # rank 0 的 ModelRunner 跑在主进程  # 与子进程相比，这里传入的是整个事件列表，因为 rank 0 需要通知所有工作进程
         # 3) 分词器只在主进程持有，并把 EOS 回填到 config
         self.tokenizer = AutoTokenizer.from_pretrained(config.model, use_fast=True)    # AutoTokenizer.from_pretrained() 是根据模型目录中的分词器配置、词表等文件，创建具体的 tokenizer 对象；use_fast=True 表示优先使用快速实现
-        config.eos = self.tokenizer.eos_token_id
+        config.eos = self.tokenizer.eos_token_id                                       # 取得结束标记
         # 4) 调度器 + 退出清理
-        self.scheduler = Scheduler(config)
-        atexit.register(self.exit)
+        self.scheduler = Scheduler(config)                                             # ModelRunner 会计算可用的缓存块数量，并写回 config.num_kvcache_blocks；分词器会提供 config.eos。调度器需要这两个值，因此放在它们后面创建
+        atexit.register(self.exit)                                                     # 注册退出清理函数
 
     def exit(self):
         self.model_runner.call("exit")
