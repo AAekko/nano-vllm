@@ -6,10 +6,10 @@ from transformers import AutoConfig
 @dataclass(slots=True)                       # @dataclass 装饰器会自动为你生成 __init__ 方法，负责接收参数并将它们赋值给 self
 class Config:
     model: str                               # 本地模型路径，里面包含模型配置config.json文件和权重model.safetensors文件等
-    max_num_batched_tokens: int = 16384      # 一次批量处理的 token 预算
-    max_num_seqs: int = 512                  # 一次批量处理的最大请求数量
+    max_num_batched_tokens: int = 16384      # 一次批量处理的 token 预算    # 主要约束 prefill
+    max_num_seqs: int = 512                  # 一次批量处理的最大请求数量   # 主要约束 decode，与上一行共同构成调度器的 Token Budget
     max_model_len: int = 4096                # 单条序列的最大长度
-    gpu_memory_utilization: float = 0.9      # 显存预算比例
+    gpu_memory_utilization: float = 0.9      # 允许占用的显存比例         # 引擎不会按最大长度预留 KV，而是先加载权重、warmup 测峰值，再把「显存配额 − 权重 − 峰值开销」全部切成 KV 块
     tensor_parallel_size: int = 1            # 张量并行使用的 GPU 数量
     enforce_eager: bool = False              # 是否强制普通执行模式；为 False 时，模型执行器可使用 CUDA Graph 加速
     hf_config: AutoConfig | None = None      # hf 表示这里使用了 Hugging Face 的配置体系和读取工具，让 AutoConfig 读取模型路径文件夹下的config.json。注意这段代码读取的是本地模型目录，没有另外加载一个 Hugging Face 模型
