@@ -15,22 +15,26 @@ from nanovllm.engine.model_runner import ModelRunner
 class LLMEngine:                          # LLMEngine 这个类负责组织整个推理流程
                                           # kwargs 只是惯用变量名，真正起作用的是前面的 **，写成 **options 也可以
     def __init__(self, model, **kwargs):  # 在函数定义里，**kwargs 会把额外的“参数名=值”收集成一个字典。可以像普通字典一样读取：像example.py中传入了enforce_eager=True, tensor_parallel_size=1。故可以：kwargs["tensor_parallel_size"]  # 得到 1
+        # 1) 从 kwargs 里挑出 Config 认识的字段，构造全局配置
         config_fields = {field.name for field in fields(Config)}                # 收集 Config 定义的字段名，这里取得的是字段的描述信息，并没有创建 Config 实例。语法：{表达式 for 变量 in 可迭代对象}
         config_kwargs = {k: v for k, v in kwargs.items() if k in config_fields} # 只保留 Config 支持的参数。这是一条字典推导式，可以拆成三部分：{k: v  # 把保留下来的键值对放入新字典  for k, v in kwargs.items() # 遍历原字典中的键值对  if k in config_fields   # 只保留字段名合法的项}
         config = Config(model, **config_kwargs)                                 # **config_kwargs 表示：把字典展开成关键字参数。   # 注意：config 中已经有 Config类 定义的所有字段及其值，model 和 config_kwargs 中的参数以传入的为准，剩下的按 Config类 初始化的值为准
-        Sequence.block_size = config.kvcache_block_size
-        self.ps = []
-        self.events = []
-        ctx = mp.get_context("spawn")
+        Sequence.block_size = config.kvcache_block_size                         # 把块大小同步给 Sequence（它用类变量记 block_size）
+        self.ps = []                                                            # 保存子进程对象，退出时需要等待它们结束
+        self.events = []                                                        # 保存通知子进程执行任务的事件
+        # 2) 张量并行：用 spawn 启动 rank>0 的 worker 子进程
+        ctx = mp.get_context("spawn")                                           # "spawn"：通过新的 Python 解释器启动子进程，适合这里的 CUDA 多进程场景
         for i in range(1, config.tensor_parallel_size):
             event = ctx.Event()
             process = ctx.Process(target=ModelRunner, args=(config, i, event))
             process.start()
             self.ps.append(process)
             self.events.append(event)
-        self.model_runner = ModelRunner(config, 0, self.events)
+        self.model_runner = ModelRunner(config, 0, self.events)                        # rank 0 的 ModelRunner 跑在主进程
+        # 3) 分词器只在主进程持有，并把 EOS 回填到 config
         self.tokenizer = AutoTokenizer.from_pretrained(config.model, use_fast=True)    # AutoTokenizer.from_pretrained() 是根据模型目录中的分词器配置、词表等文件，创建具体的 tokenizer 对象；use_fast=True 表示优先使用快速实现
         config.eos = self.tokenizer.eos_token_id
+        # 4) 调度器 + 退出清理
         self.scheduler = Scheduler(config)
         atexit.register(self.exit)
 
