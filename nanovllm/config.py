@@ -19,7 +19,7 @@ class Config:
 
     def __post_init__(self):                 # 在自动生成的 __init__ 方法执行完毕（所有字段都赋值完成）之后，Python 会自动调用 __post_init__ 方法
         assert os.path.isdir(self.model)     # 检查模型路径是不是一个存在的目录
-        assert self.kvcache_block_size % 256 == 0  # 检查缓存块大小是否为 256 的倍数
+        assert self.kvcache_block_size % 256 == 0  # 检查缓存块大小是否为 256 的倍数          # 第17行的 256 是默认值，并不是固定不变的值。创建 Config 时，可以传入其他值覆盖它,这里检查的是最终实际使用的值
         assert 1 <= self.tensor_parallel_size <= 8 # 检查张量并行数量是否在 1～8 之间
         self.hf_config = AutoConfig.from_pretrained(self.model)  # 读取模型自身的结构配置，例如层数、隐藏维度、注意力头数、最大位置数量等。这一步读取的是配置，模型权重由后面的模型执行器加载！！
         self.max_model_len = min(self.max_model_len, self.hf_config.max_position_embeddings)  # 把长度上限设为“用户设置”和“模型声明的上限”中较小的那个。例如，你设置 8192，模型只声明支持 4096，最终配置就是 4096
