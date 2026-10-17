@@ -1,5 +1,5 @@
 import atexit
-from dataclasses import fields
+from dataclasses import fields            # fields() 用来获取一个 dataclass 类定义的字段信息，包括字段名、类型、默认值等。Config类就是dataclass类定义的
 from time import perf_counter
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer
@@ -12,12 +12,12 @@ from nanovllm.engine.scheduler import Scheduler
 from nanovllm.engine.model_runner import ModelRunner
 
 
-class LLMEngine:                        # LLMEngine 这个类负责组织整个推理流程
-
-    def __init__(self, model, **kwargs):
-        config_fields = {field.name for field in fields(Config)}
-        config_kwargs = {k: v for k, v in kwargs.items() if k in config_fields}
-        config = Config(model, **config_kwargs)
+class LLMEngine:                          # LLMEngine 这个类负责组织整个推理流程
+                                          # kwargs 只是惯用变量名，真正起作用的是前面的 **，写成 **options 也可以
+    def __init__(self, model, **kwargs):  # 在函数定义里，**kwargs 会把额外的“参数名=值”收集成一个字典。可以像普通字典一样读取：像example.py中传入了enforce_eager=True, tensor_parallel_size=1。故可以：kwargs["tensor_parallel_size"]  # 得到 1
+        config_fields = {field.name for field in fields(Config)}                # 收集 Config 定义的字段名，这里取得的是字段的描述信息，并没有创建 Config 实例。语法：{表达式 for 变量 in 可迭代对象}
+        config_kwargs = {k: v for k, v in kwargs.items() if k in config_fields} # 只保留 Config 支持的参数。这是一条字典推导式，可以拆成三部分：{k: v  # 把保留下来的键值对放入新字典  for k, v in kwargs.items() # 遍历原字典中的键值对  if k in config_fields   # 只保留字段名合法的项}
+        config = Config(model, **config_kwargs)                                 # **config_kwargs 表示：把字典展开成关键字参数
         Sequence.block_size = config.kvcache_block_size
         self.ps = []
         self.events = []
