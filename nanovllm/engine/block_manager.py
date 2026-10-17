@@ -55,7 +55,7 @@ class BlockManager:
         self.used_block_ids.remove(block_id)
         self.free_block_ids.append(block_id)
 
-    def can_allocate(self, seq: Sequence) -> int:
+    def can_allocate(self, seq: Sequence) -> int:          # 如果剩下的物理块不够用于该请求，则会返回 -1 ；如果剩下的物理块够用于该请求，则会返回可复用的物理块的个数
         h = -1
         num_cached_blocks = 0
         num_new_blocks = seq.num_blocks
