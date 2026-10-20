@@ -76,7 +76,7 @@ class LLMEngine:                          # LLMEngine 这个类负责组织整�
         prefill_throughput = decode_throughput = 0.              # 这两个变量的含义分别是最近一轮 prefill 和 decode 的处理速度，单位都是 token/秒，在这里我们都初始化为0
         while not self.is_finished():                            # 对应 第61行 的is_finished()函数，这里是意思是：只要还有请求未完成，就......
             t = perf_counter()                                   # perf_counter() 是用于测量耗时的高精度计时函数  #保存开始时间后，稍后计算：perf_counter() - t，就能得到从这里开始经过的秒数，用于计算本轮速度
-            output, num_tokens = self.step()                     # 这个step()函数是在 第49行 定义的函数，这里表示让推理过程向前推进一轮
+            output, num_tokens = self.step()                     # 这个step()函数是在 第53行 定义的函数，这里表示让推理过程向前推进一轮
             if num_tokens > 0:                                   # prefill阶段
                 prefill_throughput = num_tokens / (perf_counter() - t)         # prefill 速度 = 本轮计算的 token 数 ÷ 本轮耗时
             else:                                                # decode阶段
