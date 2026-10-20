@@ -45,7 +45,7 @@ class Scheduler:
                 self.block_manager.allocate(seq, num_cached_blocks)      
             seq.num_scheduled_tokens = min(num_tokens, remaining)        # 允许对「本轮第一条」做 chunked prefill：只算预算内的部分
             num_batched_tokens += seq.num_scheduled_tokens
-            if seq.num_cached_tokens + seq.num_scheduled_tokens == seq.num_tokens:
+            if seq.num_cached_tokens + seq.num_scheduled_tokens == seq.num_tokens:  # 就是本条请求已经完成了prefill呗
                 seq.status = SequenceStatus.RUNNING
                 self.waiting.popleft()
                 self.running.append(seq)
