@@ -32,7 +32,7 @@ class Scheduler:
             remaining = self.max_num_batched_tokens - num_batched_tokens # 这批剩余的 token 预算
             if remaining == 0:
                 break
-            if not seq.block_table:                                      # 首次调度：先探测前缀缓存并占块
+            if not seq.block_table:                                      # 如果这条请求是首次调度，先判断是否有足够的块供它分配，如果够的话还要探测有几个块可以复用
                 num_cached_blocks = self.block_manager.can_allocate(seq)
                 if num_cached_blocks == -1:                              # can_allocate() 返回值为 -1，说明空闲块不足，无法分配
                     break
@@ -41,7 +41,7 @@ class Scheduler:
                 num_tokens = seq.num_tokens - seq.num_cached_tokens      # 并非首次调度，chunked prefill 续算：还有多少 token 待处理
             if remaining < num_tokens and scheduled_seqs:  # only allow chunked prefill for the first seq
                 break
-            if not seq.block_table:
+            if not seq.block_table:                                      # 如果这条请求是首次调度，现在给这条首次调度的请求正式分配块
                 self.block_manager.allocate(seq, num_cached_blocks)      
             seq.num_scheduled_tokens = min(num_tokens, remaining)        # 允许对「本轮第一条」做 chunked prefill：只算预算内的部分
             num_batched_tokens += seq.num_scheduled_tokens
