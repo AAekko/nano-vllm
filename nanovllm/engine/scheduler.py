@@ -54,7 +54,7 @@ class Scheduler:
         if scheduled_seqs:
             return scheduled_seqs, True                  # Python 中，逗号分隔的多个返回值会打包成一个 tuple（元组）  # 这里等价于 return (scheduled_seqs, True) ，调用方再通过“解包”分别接收：例如 seqs, is_prefill = self.scheduler.schedule()
 
-        # decode
+        # decode（当 waiting 空了，schedule() 转去给 running 里的序列做 decode。decode 每条序列每步只 +1 个 token，最大的风险是追加这个 token 时没有空闲块了。nano-vllm 的处理方式是抢占）
         while self.running and len(scheduled_seqs) < self.max_num_seqs:
             seq = self.running.popleft()
             while not self.block_manager.can_append(seq):
