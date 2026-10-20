@@ -57,19 +57,19 @@ class Scheduler:
         # decode（当 waiting 空了，schedule() 转去给 running 里的序列做 decode。decode 每条序列每步只 +1 个 token，最大的风险是追加这个 token 时没有空闲块了。nano-vllm 的处理方式是抢占）
         while self.running and len(scheduled_seqs) < self.max_num_seqs:
             seq = self.running.popleft()
-            while not self.block_manager.can_append(seq):
+            while not self.block_manager.can_append(seq):# 块不够用了
                 if self.running:
-                    self.preempt(self.running.pop())
+                    self.preempt(self.running.pop())     # 牺牲队尾序列（LIFO）
                 else:
-                    self.preempt(seq)
+                    self.preempt(seq)                    # 没得牺牲了，牺牲自己
                     break
             else:
                 seq.num_scheduled_tokens = 1
-                seq.is_prefill = False
-                self.block_manager.may_append(seq)
-                scheduled_seqs.append(seq)
+                seq.is_prefill = False                   # 已过 prefill，进入逐 token 生成
+                self.block_manager.may_append(seq)       
+                scheduled_seqs.append(seq)               
         assert scheduled_seqs
-        self.running.extendleft(reversed(scheduled_seqs))
+        self.running.extendleft(reversed(scheduled_seqs))# 放回队头，保持顺序
         return scheduled_seqs, False
 
     def preempt(self, seq: Sequence):
