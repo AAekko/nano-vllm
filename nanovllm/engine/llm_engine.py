@@ -71,7 +71,7 @@ class LLMEngine:                          # LLMEngine 这个类负责组织整�
         if not isinstance(sampling_params, list):                # isinstance() 是 Python 内置函数，用来判断一个对象是不是某种类型，返回 True 或 False，用法：isinstance(对象, 类型)
             sampling_params = [sampling_params] * len(prompts)   # 如过传入的sampling_params不是list[SamplingParams]，而是SamplingParams这种单个参数对象，那么就构造一个与prompts等长的列表。例如：[sampling_params] * 3会变成[sampling_params, sampling_params, sampling_params]
         for prompt, sp in zip(prompts, sampling_params):         # zip() 将两个列表按位置配对：prompts[0]  ↔ sampling_params[0] ， prompts[1]  ↔ sampling_params[1]     # 每次循环，prompt 是一条输入，sp 是它对应的采样参数    # 额外插一嘴zip的用法，当然这里不存在这个问题，因为第68行他们长度一定是一样的。两个列表长度不同时，zip() 只遍历较短的一方，这里没有额外校验长度
-            self.add_request(prompt, sp)                         # 逐条创建请求并加入调度器
+            self.add_request(prompt, sp)                         # 逐条创建请求并加入调度器           这里好像循环完之后把所有的请求都放入 waiting 队列了
         outputs = {}                                             # 创建保存完成结果的字典，这里只是先准备一个容器，用来跨多轮循环累计已完成请求的结果    # 我怎么好像发现有花括号 {} ，然后花括号里面有 键: 值 形式，就是字典呢
         prefill_throughput = decode_throughput = 0.              # 这两个变量的含义分别是最近一轮 prefill 和 decode 的处理速度，单位都是 token/秒，在这里我们都初始化为0
         while not self.is_finished():                            # 对应 第61行 的is_finished()函数，这里是意思是：只要还有请求未完成，就......
