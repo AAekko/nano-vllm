@@ -15,18 +15,18 @@ class Scheduler:
         self.block_manager = BlockManager(config.num_kvcache_blocks, config.kvcache_block_size)
         self.waiting: deque[Sequence] = deque()                       # 新来的、还没 prefill 的序列
         self.running: deque[Sequence] = deque()                       # 已 prefill、正在逐 token decode 的序列
-
+    
     def is_finished(self):
         return not self.waiting and not self.running
 
     def add(self, seq: Sequence):
         self.waiting.append(seq)
-
+    # schedule() 的逻辑是优先 prefill：只要 waiting 里有序列且预算允许，就先做 prefill；waiting 空了，才去 running 做 decode
     def schedule(self) -> tuple[list[Sequence], bool]:  # 返回值用元组很合适，因为它表达的是位置和含义固定的一组信息。其中请求列表可以有很多个请求，但外层元组始终只有这两个元素   # 最后返回两个信息：1.哪些请求要参与本轮计算：scheduled_seqs。 2.本轮执行 Prefill 还是 Decode：is_prefill。
         scheduled_seqs = []                             # 保存本轮选中的请求
         num_batched_tokens = 0                          # 统计本轮 Prefill 已经安排了多少个 token
 
-        # prefill
+        # prefill（从 waiting 队头依次取序列，往一个 batch 里塞，直到撞上任一预算上限）
         while self.waiting and len(scheduled_seqs) < self.max_num_seqs:  # 只要还有等待请求，而且本轮请求数没有达到上限，就继续尝试
             seq = self.waiting[0]                                        # self.waiting[0] 只是查看队首，没有立即取出，因为这个请求可能无法调度，也可能需要分多轮完成 Prefi
             remaining = self.max_num_batched_tokens - num_batched_tokens # max_num_batched_tokens指的是一次批量处理的 token 预算
