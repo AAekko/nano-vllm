@@ -95,7 +95,7 @@ class BlockManager:
         for block_id in reversed(seq.block_table):
             block = self.blocks[block_id]
             block.ref_count -= 1
-            if block.ref_count == 0:
+            if block.ref_count == 0:                                                    # 没人用了才真正放回空闲队列
                 self._deallocate_block(block_id)
         seq.num_cached_tokens = 0
         seq.block_table.clear()
