@@ -59,7 +59,7 @@ class Scheduler:
             seq = self.running.popleft()
             while not self.block_manager.can_append(seq):# 块不够用了
                 if self.running:
-                    self.preempt(self.running.pop())     # 牺牲队尾序列（LIFO）
+                    self.preempt(self.running.pop())     # 牺牲队尾序列（LIFO），因为被抢占的往往是「来得最晚」的请求，它积累的 KV 最少，重算成本也最小
                 else:
                     self.preempt(seq)                    # 没得牺牲了，牺牲自己
                     break
@@ -72,21 +72,21 @@ class Scheduler:
         self.running.extendleft(reversed(scheduled_seqs))# 放回队头，保持顺序
         return scheduled_seqs, False
 
-    def preempt(self, seq: Sequence):
-        seq.status = SequenceStatus.WAITING
-        seq.is_prefill = True
-        self.block_manager.deallocate(seq)
-        self.waiting.appendleft(seq)
+    def preempt(self, seq: Sequence):                    # 抢占
+        seq.status = SequenceStatus.WAITING              # 打回等待队列
+        seq.is_prefill = True                            # 下次要重新 prefill
+        self.block_manager.deallocate(seq)               # 释放它占的所有 KV 块
+        self.waiting.appendleft(seq)                     # 插回队头，优先重新调度
 
-    def postprocess(self, seqs: list[Sequence], token_ids: list[int], is_prefill: bool):
+    def postprocess(self, seqs: list[Sequence], token_ids: list[int], is_prefill: bool):    # 写回与结束判定（模型算完、采样出 token 后，引擎调用 scheduler.postprocess 把结果写回序列并判断是否结束）
         for seq, token_id in zip(seqs, token_ids):
             self.block_manager.hash_blocks(seq)
             seq.num_cached_tokens += seq.num_scheduled_tokens
             seq.num_scheduled_tokens = 0
             if is_prefill and seq.num_cached_tokens < seq.num_tokens:
-                continue
-            seq.append_token(token_id)
+                continue                                                                    # prefill 还没算完，先不追加新 token
+            seq.append_token(token_id)                                                      # 追加采样出的新 token
             if (not seq.ignore_eos and token_id == self.eos) or seq.num_completion_tokens == seq.max_tokens:
                 seq.status = SequenceStatus.FINISHED
-                self.block_manager.deallocate(seq)
+                self.block_manager.deallocate(seq)                                          # 结束就释放 KV
                 self.running.remove(seq)
