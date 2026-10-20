@@ -9,7 +9,7 @@ class Scheduler:
 
     def __init__(self, config: Config):         # 调度器维护两个双端队列（deque）和若干预算约束
         self.max_num_seqs = config.max_num_seqs                       # 一轮最多几条序列
-        self.max_num_batched_tokens = config.max_num_batched_tokens   # 一轮最多几个 token
+        self.max_num_batched_tokens = config.max_num_batched_tokens   # 一次批量处理的 token 预算
         self.eos = config.eos
         self.block_size = config.kvcache_block_size
         self.block_manager = BlockManager(config.num_kvcache_blocks, config.kvcache_block_size)
@@ -29,21 +29,21 @@ class Scheduler:
         # prefill（从 waiting 队头依次取序列，往一个 batch 里塞，直到撞上任一预算上限）
         while self.waiting and len(scheduled_seqs) < self.max_num_seqs:  # 只要还有等待请求，而且本轮请求数没有达到上限，就继续尝试
             seq = self.waiting[0]                                        # self.waiting[0] 只是查看队首，没有立即取出，因为这个请求可能无法调度，也可能需要分多轮完成 Prefill
-            remaining = self.max_num_batched_tokens - num_batched_tokens # max_num_batched_tokens指的是一次批量处理的 token 预算
+            remaining = self.max_num_batched_tokens - num_batched_tokens # 这批剩余的 token 预算
             if remaining == 0:
                 break
-            if not seq.block_table:                                      # 
+            if not seq.block_table:                                      # 首次调度：先探测前缀缓存并占块
                 num_cached_blocks = self.block_manager.can_allocate(seq)
-                if num_cached_blocks == -1:
+                if num_cached_blocks == -1:                              # can_allocate() 返回值为 -1，说明空闲块不足，无法分配
                     break
-                num_tokens = seq.num_tokens - num_cached_blocks * self.block_size
+                num_tokens = seq.num_tokens - num_cached_blocks * self.block_size  # 减去可复用缓存块上的 token，还有多少 token
             else:
-                num_tokens = seq.num_tokens - seq.num_cached_tokens
+                num_tokens = seq.num_tokens - seq.num_cached_tokens      # 并非首次调度，chunked prefill 续算：还有多少 token 待处理
             if remaining < num_tokens and scheduled_seqs:  # only allow chunked prefill for the first seq
                 break
             if not seq.block_table:
-                self.block_manager.allocate(seq, num_cached_blocks)
-            seq.num_scheduled_tokens = min(num_tokens, remaining)
+                self.block_manager.allocate(seq, num_cached_blocks)      
+            seq.num_scheduled_tokens = min(num_tokens, remaining)        # 允许对「本轮第一条」做 chunked prefill：只算预算内的部分
             num_batched_tokens += seq.num_scheduled_tokens
             if seq.num_cached_tokens + seq.num_scheduled_tokens == seq.num_tokens:
                 seq.status = SequenceStatus.RUNNING
