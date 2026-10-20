@@ -50,7 +50,7 @@ class LLMEngine:                          # LLMEngine 这个类负责组织整�
         seq = Sequence(prompt, sampling_params)                 # 创建 Sequence 类，实例化为seq，保存 token 和采样参数                              # 再次注意，python中将类实例化就是长这样，区别于C++
         self.scheduler.add(seq)                                 # 加入scheduler.waiting。这里调用了scheduler类的add函数，而这个函数的函数就是将请求加入waiting队列
 
-    def step(self):
+    def step(self):     # 引擎每跑一步（step），都要先问调度器：这一轮算谁？是 prefill 还是 decode？它们的 KV 放得下吗？
         seqs, is_prefill = self.scheduler.schedule()                                               # 从调度器中挑选本轮要处理的请求，schedule()函数在scheduler.py文件 第25行
         num_tokens = sum(seq.num_scheduled_tokens for seq in seqs) if is_prefill else -len(seqs)   # 记录本轮处理量，使用正负号区分阶段。正数时，num_tokens等于本轮实际调度计算的输入 token 总数；负数时，num_tokens绝对值等于本轮处理的序列数，因为每条序列处理一个输入 token
         token_ids = self.model_runner.call("run", seqs, is_prefill)                                # 执行模型，采样下一个 token
