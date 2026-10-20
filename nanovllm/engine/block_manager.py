@@ -92,7 +92,7 @@ class BlockManager:
         seq.num_cached_tokens = num_cached_blocks * self.block_size
 
     def deallocate(self, seq: Sequence):
-        for block_id in reversed(seq.block_table):
+        for block_id in reversed(seq.block_table):                                      # 这里用 reversed，是为了让尾部块优先被重新分配，前缀块保留得更久，提高前缀缓存命中率
             block = self.blocks[block_id]
             block.ref_count -= 1
             if block.ref_count == 0:                                                    # 没人用了才真正放回空闲队列
