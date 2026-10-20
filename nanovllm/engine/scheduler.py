@@ -7,14 +7,14 @@ from nanovllm.engine.block_manager import BlockManager
 
 class Scheduler:
 
-    def __init__(self, config: Config):
-        self.max_num_seqs = config.max_num_seqs
-        self.max_num_batched_tokens = config.max_num_batched_tokens
+    def __init__(self, config: Config):         # 调度器维护两个双端队列（deque）和若干预算约束
+        self.max_num_seqs = config.max_num_seqs                       # 一轮最多几条序列
+        self.max_num_batched_tokens = config.max_num_batched_tokens   # 一轮最多几个 token
         self.eos = config.eos
         self.block_size = config.kvcache_block_size
         self.block_manager = BlockManager(config.num_kvcache_blocks, config.kvcache_block_size)
-        self.waiting: deque[Sequence] = deque()
-        self.running: deque[Sequence] = deque()
+        self.waiting: deque[Sequence] = deque()                       # 新来的、还没 prefill 的序列
+        self.running: deque[Sequence] = deque()                       # 已 prefill、正在逐 token decode 的序列
 
     def is_finished(self):
         return not self.waiting and not self.running
