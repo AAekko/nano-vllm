@@ -39,11 +39,11 @@ class Scheduler:
                 num_tokens = seq.num_tokens - num_cached_blocks * self.block_size  # 减去可复用缓存块上的 token，还有多少 token
             else:
                 num_tokens = seq.num_tokens - seq.num_cached_tokens      # 并非首次调度，chunked prefill 续算：还有多少 token 待处理
-            if remaining < num_tokens and scheduled_seqs:  # only allow chunked prefill for the first seq
+            if remaining < num_tokens and scheduled_seqs:                # 只有在「已经塞了至少一条序列」时，预算不够才收手
                 break
             if not seq.block_table:                                      # 如果这条请求是首次调度，现在给这条首次调度的请求正式分配块
                 self.block_manager.allocate(seq, num_cached_blocks)      
-            seq.num_scheduled_tokens = min(num_tokens, remaining)        # 允许对「本轮第一条」做 chunked prefill：只算预算内的部分
+            seq.num_scheduled_tokens = min(num_tokens, remaining)        # 允许对「本轮第一条」做 chunked prefill：只算预算内的部分。言下之意是：如果一条超长 prompt 单独一条就超预算，而 batch 还空着，调度器会用 min(num_tokens, remaining) 把它截断，只 prefill 预算内的一段
             num_batched_tokens += seq.num_scheduled_tokens
             if seq.num_cached_tokens + seq.num_scheduled_tokens == seq.num_tokens:  # 就是本条请求已经完成了prefill呗
                 seq.status = SequenceStatus.RUNNING
