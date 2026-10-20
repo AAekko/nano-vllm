@@ -21,7 +21,7 @@ class Scheduler:
 
     def add(self, seq: Sequence):
         self.waiting.append(seq)
-    # schedule() 的逻辑是优先 prefill：只要 waiting 里有序列且预算允许，就先做 prefill；waiting 空了，才去 running 做 decode
+    # schedule() 的逻辑是优先 prefill：只要 waiting 里有序列且预算允许，就先做 prefill；waiting 空了，才去 running 做 decode。注意：这里是不可能将 prefill 和 decode 混批的
     def schedule(self) -> tuple[list[Sequence], bool]:  # 返回值用元组很合适，因为它表达的是位置和含义固定的一组信息。其中请求列表可以有很多个请求，但外层元组始终只有这两个元素   # 最后返回两个信息：1.哪些请求要参与本轮计算：scheduled_seqs。 2.本轮执行 Prefill 还是 Decode：is_prefill。
         scheduled_seqs = []                             # 保存本轮选中的请求
         num_batched_tokens = 0                          # 统计本轮 Prefill 已经安排了多少个 token
