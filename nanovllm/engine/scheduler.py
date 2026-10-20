@@ -83,7 +83,7 @@ class Scheduler:
             self.block_manager.hash_blocks(seq)
             seq.num_cached_tokens += seq.num_scheduled_tokens
             seq.num_scheduled_tokens = 0
-            if is_prefill and seq.num_cached_tokens < seq.num_tokens:
+            if is_prefill and seq.num_cached_tokens < seq.num_tokens:                       # num_tokens 指这个请求上的 token 总数
                 continue                                                                    # prefill 还没算完，先不追加新 token
             seq.append_token(token_id)                                                      # 追加采样出的新 token
             if (not seq.ignore_eos and token_id == self.eos) or seq.num_completion_tokens == seq.max_tokens:
