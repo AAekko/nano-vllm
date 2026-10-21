@@ -72,7 +72,7 @@ class ModelRunner:
         n = int.from_bytes(self.shm.buf[0:4], "little")
         method_name, *args = pickle.loads(self.shm.buf[4:n+4])
         self.event.clear()
-        return method_name, args
+        return method_name, args                               # 当一个函数使用 return 返回多个值时，实际上返回的是一个元组（tuple）
 
     def write_shm(self, method_name, *args):
         assert self.world_size > 1 and self.rank == 0
